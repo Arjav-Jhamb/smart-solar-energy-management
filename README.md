@@ -315,20 +315,7 @@ The model automatically calculates:
 - **RMSE**: Root Mean Squared Error
 - **MAE**: Mean Absolute Error
 - **Feature Importance**: Which factors matter most
-
----
-
-## 🖼️ Screenshots
-
-### Dashboard Overview
-*Add your screenshot here*
-
-### Real-time Monitoring
-*Add your screenshot here*
-
-### Forecast Visualization
-*Add your screenshot here*
-
+  
 ---
 
 ## 🔮 Future Enhancements
