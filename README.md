@@ -364,7 +364,7 @@ Contributions are welcome! Please follow these steps:
 
 - 📧 Email: [arjavjhamb22@gmail.com](mailto:arjavjhamb22@gmail.com)
 - 🔗 GitHub: [@Arjav-Jhamb](https://github.com/Arjav-Jhamb)
-- 💼 LinkedIn: [Connect with me](https://linkedin.com/in/arjav-jhamb) *(update with your profile)*
+- 💼 LinkedIn: [Connect with me](www.linkedin.com/in/arjav-jhamb-9a19a737a)
 
 ---
 
