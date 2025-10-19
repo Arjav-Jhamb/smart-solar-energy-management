@@ -44,9 +44,9 @@ It provides users with **real-time visual insights**, **energy forecasts**, and 
 ## 🧠 System Overview  
 
 ```mermaid
-graph TD;
-    A[User Interface<br>(React + TypeScript)] -->|HTTP Requests| B[Flask Backend<br>(Python)];
-    B -->|Reads & Processes| C[(solar_data.csv)];
-    B -->|Returns JSON Data| A;
-    A --> D[Data Visualization Dashboard];
-    D --> E[User Insights & Recommendations];
+graph TD
+    A[User Interface (React + TypeScript)] -->|HTTP Requests| B[Flask Backend (Python)]
+    B -->|Reads & Processes| C[(solar_data.csv)]
+    B -->|Returns JSON Data| A
+    A --> D[Visualization Dashboard]
+    D --> E[User Insights & Recommendations]
