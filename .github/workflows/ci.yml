@@ -1,0 +1,181 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install fastapi uvicorn pandas numpy scikit-learn joblib python-multipart websockets
+        pip install pytest pytest-cov flake8
+    
+    - name: Lint with flake8
+      run: |
+        cd backend
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test backend API
+      run: |
+        cd backend
+        # Add basic health check test
+        python -c "from src.main import app; print('Backend imports successfully')"
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['16.x', '18.x', '20.x']
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    - name: Cache Node.js dependencies
+      uses: actions/cache@v3
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Lint frontend
+      run: |
+        cd frontend
+        npm run lint --if-present
+    
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+    
+    - name: Run frontend tests
+      run: |
+        cd frontend
+        npm test --if-present -- --watchAll=false
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Check for large files
+      run: |
+        find . -type f -size +10M | grep -v node_modules | grep -v venv | grep -v .git
+        if [ $? -eq 0 ]; then
+          echo "⚠️ Large files detected!"
+          exit 1
+        fi
+    
+    - name: Check file permissions
+      run: |
+        find . -type f -executable | grep -v node_modules | grep -v venv | grep -v .git
+    
+    - name: Count lines of code
+      run: |
+        echo "📊 Project Statistics:"
+        echo "Python files:"
+        find backend/src -name "*.py" | xargs wc -l | tail -1
+        echo "TypeScript/JavaScript files:"
+        find frontend/src -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" | xargs wc -l | tail -1
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build backend Docker image
+      run: |
+        echo "FROM python:3.10-slim" > backend/Dockerfile
+        echo "WORKDIR /app" >> backend/Dockerfile
+        echo "COPY requirements.txt ." >> backend/Dockerfile
+        echo "RUN pip install -r requirements.txt" >> backend/Dockerfile
+        echo "COPY . ." >> backend/Dockerfile
+        echo "CMD [\"python\", \"src/main.py\"]" >> backend/Dockerfile
+        docker build -t solar-backend:latest backend/
+    
+    - name: Build frontend Docker image
+      run: |
+        echo "FROM node:18-alpine" > frontend/Dockerfile
+        echo "WORKDIR /app" >> frontend/Dockerfile
+        echo "COPY package*.json ./" >> frontend/Dockerfile
+        echo "RUN npm ci" >> frontend/Dockerfile
+        echo "COPY . ." >> frontend/Dockerfile
+        echo "RUN npm run build" >> frontend/Dockerfile
+        echo "CMD [\"npm\", \"start\"]" >> frontend/Dockerfile
+        docker build -t solar-frontend:latest frontend/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy notification
+      run: |
+        echo "🚀 Deployment step - Configure your deployment target here"
+        echo "Options: AWS, Azure, GCP, Heroku, Vercel, etc."
